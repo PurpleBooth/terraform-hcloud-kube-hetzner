@@ -220,4 +220,10 @@ locals {
       ]
     }
   ])
+
+  cni_install_file = {
+    "calico" = "https://projectcalico.docs.tigera.io/manifests/calico.yaml"
+    "cilium" = "cilium.yaml"
+  }
 }
+

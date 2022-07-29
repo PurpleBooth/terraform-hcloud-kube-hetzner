@@ -21,9 +21,9 @@ resource "null_resource" "first_control_plane" {
       advertise-address           = module.control_planes[keys(module.control_planes)[0]].private_ipv4_address
       node-taint                  = local.control_plane_nodes[keys(module.control_planes)[0]].taints
       node-label                  = local.control_plane_nodes[keys(module.control_planes)[0]].labels
-      disable-network-policy      = var.cni_plugin == "calico" ? true : var.disable_network_policy
+      disable-network-policy      = var.cni_plugin != "flannel" ? true : var.disable_network_policy
       },
-      var.cni_plugin == "calico" ? {
+      var.cni_plugin != "flannel" ? {
         flannel-backend = "none"
     } : {}))
 
@@ -97,7 +97,7 @@ resource "null_resource" "kustomization" {
         ],
         var.disable_hetzner_csi ? [] : ["https://raw.githubusercontent.com/hetznercloud/csi-driver/${local.csi_version}/deploy/kubernetes/hcloud-csi.yml"],
         var.traefik_enabled ? ["traefik_config.yaml"] : [],
-        var.cni_plugin == "calico" ? ["https://projectcalico.docs.tigera.io/manifests/calico.yaml"] : [],
+        local.cni_install_file[var.cni_plugin],
         var.enable_longhorn ? ["longhorn.yaml"] : [],
         var.enable_cert_manager || var.enable_rancher ? ["cert_manager.yaml"] : [],
         var.enable_rancher ? ["rancher.yaml"] : [],
@@ -153,6 +153,14 @@ resource "null_resource" "kustomization" {
         cluster_cidr_ipv4 = local.cluster_cidr_ipv4
     })
     destination = "/var/post_install/calico.yaml"
+  }
+
+  # Upload the cilium install file
+  provisioner "file" {
+    content = templatefile(
+      "${path.module}/templates/cilium.yaml.tpl",
+    {})
+    destination = "/var/post_install/cilium.yaml"
   }
 
   # Upload the system upgrade controller plans config
